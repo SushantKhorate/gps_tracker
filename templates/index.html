@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Live GPS + RFID</title>
+
+  <link rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+  <style>
+    body { text-align: center; font-family: Arial; }
+    #map { height: 400px; width: 700px; margin: auto; }
+  </style>
+</head>
+
+<body>
+
+<h2>Live GPS Tracking</h2>
+
+<p id="coords">Waiting...</p>
+<p id="card">Waiting...</p>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+
+let map = L.map('map').setView([16.7, 74.2], 13);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19
+}).addTo(map);
+
+let marker = L.marker([16.7, 74.2]).addTo(map);
+
+setInterval(() => {
+
+  fetch("/api/data")
+    .then(res => res.json())
+    .then(data => {
+
+      if (data.lat !== null && data.lon !== null) {
+        document.getElementById("coords").innerText =
+          "Lat: " + data.lat + " | Lon: " + data.lon;
+
+        marker.setLatLng([data.lat, data.lon]);
+      }
+
+      if (data.card !== null) {
+        document.getElementById("card").innerText =
+          "Card: " + data.card;
+      }
+
+    });
+
+}, 2000);
+
+</script>
+
+</body>
+</html>
