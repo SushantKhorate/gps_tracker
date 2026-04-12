@@ -31,6 +31,12 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19
 }).addTo(map);
 
+let map = L.map('map').setView([16.7, 74.2], 13);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19
+}).addTo(map);
+
 let marker = L.marker([16.7, 74.2]).addTo(map);
 
 setInterval(() => {
@@ -46,14 +52,14 @@ setInterval(() => {
         marker.setLatLng([data.lat, data.lon]);
       }
 
-      if (data.card !== null) {
-        document.getElementById("card").innerText =
-          "Card: " + data.card;
+      if (data.time !== null) {
+        document.getElementById("time").innerText =
+          "Last Update: " + data.time;
       }
 
     });
 
-}, 2000);
+}, 5000);
 
 </script>
 
