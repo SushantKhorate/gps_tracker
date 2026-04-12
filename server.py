@@ -1,17 +1,25 @@
 from flask import Flask, request, jsonify, render_template
+import datetime
 
 app = Flask(__name__)
 
 data_store = {
     "lat": None,
     "lon": None,
-    "card": None
+    "time": None
 }
 
 @app.route('/api/gps', methods=['POST'])
 def receive():
     global data_store
-    data_store = request.json
+    data = request.json
+
+    data_store = {
+        "lat": data.get("lat"),
+        "lon": data.get("lon"),
+        "time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+
     print("Received:", data_store)
     return {"status": "ok"}
 
