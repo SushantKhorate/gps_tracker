@@ -1,61 +1,64 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Live GPS Tracker</title>
-
-  <link rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-
-  <style>
-    body { text-align: center; font-family: Arial; }
-    #map { height: 400px; width: 700px; margin: auto; }
-  </style>
+<title>RFID Relay System</title>
+<style>
+body { font-family: Arial; text-align:center; }
+table { margin:auto; border-collapse: collapse; }
+td, th { border:1px solid black; padding:5px; }
+</style>
 </head>
 
 <body>
 
-<h2>Live GPS Tracking</h2>
+<h2>RFID Relay Dashboard</h2>
 
-<p id="coords">Waiting for GPS...</p>
-<p id="time">Last Update: Waiting...</p>
+<h3 id="relay">Relay: --</h3>
 
-<div id="map"></div>
+<button onclick="turnOff()">TURN OFF RELAY</button>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<h3>Last 20 Events</h3>
+
+<table>
+<thead>
+<tr>
+<th>Card</th>
+<th>Time</th>
+<th>Relay</th>
+</tr>
+</thead>
+<tbody id="log"></tbody>
+</table>
 
 <script>
 
-let map = L.map('map').setView([16.7, 74.2], 13);
+function turnOff() {
+  fetch("/api/off", { method: "POST" });
+}
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19
-}).addTo(map);
-
-let marker = L.marker([16.7, 74.2]).addTo(map);
-
-// 🔥 NO PAGE REFRESH — ONLY DATA UPDATE
-setInterval(() => {
-
+function update() {
   fetch("/api/data")
-    .then(res => res.json())
+    .then(r => r.json())
     .then(data => {
 
-      if (data.lat !== null && data.lon !== null) {
-        document.getElementById("coords").innerText =
-          "Lat: " + data.lat + " | Lon: " + data.lon;
+      document.getElementById("relay").innerText =
+        "Relay: " + data.relay;
 
-        marker.setLatLng([data.lat, data.lon]);
-      }
+      let html = "";
 
-      if (data.time !== null) {
-        document.getElementById("time").innerText =
-          "Last Update: " + data.time;
-      }
+      data.events.forEach(e => {
+        html += `<tr>
+          <td>${e.card}</td>
+          <td>${e.time}</td>
+          <td>${e.relay}</td>
+        </tr>`;
+      });
 
-    })
-    .catch(err => console.log(err));
+      document.getElementById("log").innerHTML = html;
+    });
+}
 
-}, 2000);
+setInterval(update, 2000);
 
 </script>
 
