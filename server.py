@@ -3,35 +3,46 @@ from datetime import datetime
 import pytz
 
 app = Flask(__name__)
-
-# Indian timezone
 IST = pytz.timezone('Asia/Kolkata')
 
-data_store = {
-    "lat": None,
-    "lon": None,
-    "time": None
-}
+events = []
+relay_status = "OFF"
 
-@app.route('/api/gps', methods=['POST'])
-def receive():
-    global data_store
+@app.route('/api/event', methods=['POST'])
+def event():
+    global relay_status
+
     data = request.json
 
-    now = datetime.now(IST)
+    now = datetime.now(IST).strftime("%d-%m-%Y %I:%M:%S %p")
 
-    data_store = {
-        "lat": data.get("lat"),
-        "lon": data.get("lon"),
-        "time": now.strftime("%d-%m-%Y %I:%M:%S %p")  # 🔥 12hr format
+    entry = {
+        "card": data.get("card"),
+        "time": now,
+        "relay": data.get("relay")
     }
 
-    print("Received:", data_store)
+    relay_status = entry["relay"]
+
+    events.insert(0, entry)
+
+    if len(events) > 20:
+        events.pop()
+
     return {"status": "ok"}
 
 @app.route('/api/data')
 def data():
-    return jsonify(data_store)
+    return jsonify({
+        "relay": relay_status,
+        "events": events
+    })
+
+@app.route('/api/off', methods=['POST'])
+def off():
+    global relay_status
+    relay_status = "OFF"
+    return {"status": "off"}
 
 @app.route('/')
 def home():
