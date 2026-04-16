@@ -1,9 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>RFID Relay System</title>
+<title>Smart System</title>
+
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
 <style>
 body { font-family: Arial; text-align:center; }
+#map { height:300px; width:600px; margin:auto; }
 table { margin:auto; border-collapse: collapse; }
 td, th { border:1px solid black; padding:5px; }
 </style>
@@ -11,11 +16,15 @@ td, th { border:1px solid black; padding:5px; }
 
 <body>
 
-<h2>RFID Relay Dashboard</h2>
+<h2>Smart Dashboard</h2>
 
 <h3 id="relay">Relay: --</h3>
 
 <button onclick="turnOff()">TURN OFF RELAY</button>
+
+<p id="time">Last GPS Update: --</p>
+
+<div id="map"></div>
 
 <h3>Last 20 Events</h3>
 
@@ -30,32 +39,53 @@ td, th { border:1px solid black; padding:5px; }
 <tbody id="log"></tbody>
 </table>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <script>
 
+let map = L.map('map').setView([16.7, 74.2], 13);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
+.addTo(map);
+
+let marker = L.marker([16.7, 74.2]).addTo(map);
+
 function turnOff() {
-  fetch("/api/off", { method: "POST" });
+  fetch("/api/off", {method:"POST"});
 }
 
 function update() {
+
   fetch("/api/data")
-    .then(r => r.json())
-    .then(data => {
+  .then(r => r.json())
+  .then(data => {
 
-      document.getElementById("relay").innerText =
-        "Relay: " + data.relay;
+    document.getElementById("relay").innerText =
+      "Relay: " + data.relay;
 
-      let html = "";
+    // GPS
+    if (data.gps.lat != null) {
+      marker.setLatLng([data.gps.lat, data.gps.lon]);
+      map.setView([data.gps.lat, data.gps.lon]);
 
-      data.events.forEach(e => {
-        html += `<tr>
-          <td>${e.card}</td>
-          <td>${e.time}</td>
-          <td>${e.relay}</td>
-        </tr>`;
-      });
+      document.getElementById("time").innerText =
+        "Last GPS Update: " + data.gps.time;
+    }
 
-      document.getElementById("log").innerHTML = html;
+    // logs
+    let html = "";
+
+    data.events.forEach(e => {
+      html += `<tr>
+        <td>${e.card}</td>
+        <td>${e.time}</td>
+        <td>${e.relay}</td>
+      </tr>`;
     });
+
+    document.getElementById("log").innerHTML = html;
+
+  });
 }
 
 setInterval(update, 2000);
