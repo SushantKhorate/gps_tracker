@@ -58,7 +58,7 @@ def event():
 
     counter += 1
 
-    if len(logs) > 30:
+    if len(logs) > 100:
         logs.pop()
 
     relay_status = "ON"
@@ -82,7 +82,7 @@ def batch():
         })
         counter += 1
 
-    if len(logs) > 30:
+    if len(logs) > 100:
         logs[:] = logs[:30]
 
     relay_status = "ON"
