@@ -120,25 +120,21 @@ function update() {
     let html = "";
     let lastDate = "";
 
-    data.logs.forEach(l => {
+    data.logs.forEach((l, index) => {
 
-      if (l.date !== lastDate) {
-        html += `<tr>
-          <td colspan="3" class="date-row">${l.date}</td>
-        </tr>`;
-        lastDate = l.date;
-      }
+  if (l.date !== lastDate) {
+    html += `<tr>
+      <td colspan="3" class="date-row">${l.date}</td>
+    </tr>`;
+    lastDate = l.date;
+  }
 
-      html += `<tr>
-        <td>${l.id}</td>
-        <td>${l.user}</td>
-        <td>${l.on}</td>
-      </tr>`;
-    });
-
-    document.getElementById("log").innerHTML = html;
-  });
-}
+  html += `<tr>
+    <td>${index + 1}</td>
+    <td>${l.user}</td>
+    <td>${l.on}</td>
+  </tr>`;
+});
 
 setInterval(update, 2000);
 
