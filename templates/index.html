@@ -55,7 +55,7 @@ td, th {
 
 <h2>Vehicle Dashboard</h2>
 
-<!-- HISTORY DROPDOWN -->
+<!-- HISTORY -->
 <select id="history" onchange="showHistory(this.value)">
 <option value="">Live</option>
 </select>
@@ -79,7 +79,7 @@ td, th {
 
 <script>
 
-// -------- MAP INIT --------
+// -------- MAP --------
 let map = L.map('map').setView([16.7, 74.2], 15);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
@@ -96,7 +96,7 @@ map.on("move", () => {
   lastInteraction = Date.now();
 });
 
-// -------- UPDATE LOOP --------
+// -------- UPDATE --------
 function update() {
 
   fetch("/api/data")
@@ -122,19 +122,23 @@ function update() {
 
     data.logs.forEach((l, index) => {
 
-  if (l.date !== lastDate) {
-    html += `<tr>
-      <td colspan="3" class="date-row">${l.date}</td>
-    </tr>`;
-    lastDate = l.date;
-  }
+      if (l.date !== lastDate) {
+        html += `<tr>
+          <td colspan="3" class="date-row">${l.date}</td>
+        </tr>`;
+        lastDate = l.date;
+      }
 
-  html += `<tr>
-    <td>${index + 1}</td>
-    <td>${l.user}</td>
-    <td>${l.on}</td>
-  </tr>`;
-});
+      html += `<tr>
+        <td>${index + 1}</td>
+        <td>${l.user}</td>
+        <td>${l.on}</td>
+      </tr>`;
+    });
+
+    document.getElementById("log").innerHTML = html;
+  });
+}
 
 setInterval(update, 2000);
 
