@@ -1,34 +1,69 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Vehicle System</title>
+<title>Vehicle Dashboard</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <link rel="stylesheet"
 href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
-body { font-family: Arial; text-align:center; }
-#map { height:300px; width:600px; margin:auto; }
+body {
+  font-family: Arial;
+  text-align: center;
+  margin: 0;
+}
 
-table { border-collapse: collapse; margin:auto; margin-top:20px; }
-td, th { border:1px solid black; padding:6px; }
+h2 {
+  margin-top: 10px;
+}
 
-button { padding:10px 20px; margin:10px; }
+#map {
+  height: 300px;
+  width: 95%;
+  margin: auto;
+  margin-top: 10px;
+}
+
+select {
+  padding: 8px;
+  margin: 10px;
+}
+
+table {
+  border-collapse: collapse;
+  margin: auto;
+  margin-top: 10px;
+  width: 95%;
+}
+
+td, th {
+  border: 1px solid black;
+  padding: 6px;
+}
+
+.date-row {
+  font-weight: bold;
+  text-align: center;
+}
 </style>
+
 </head>
 
 <body>
 
 <h2>Vehicle Dashboard</h2>
 
-<br>
-
+<!-- HISTORY DROPDOWN -->
 <select id="history" onchange="showHistory(this.value)">
 <option value="">Live</option>
 </select>
 
+<!-- MAP -->
 <div id="map"></div>
 
+<!-- LOG TABLE -->
 <table>
 <thead>
 <tr>
@@ -44,6 +79,7 @@ button { padding:10px 20px; margin:10px; }
 
 <script>
 
+// -------- MAP INIT --------
 let map = L.map('map').setView([16.7, 74.2], 15);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
@@ -51,20 +87,36 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
 
 let marker = L.marker([16.7, 74.2]).addTo(map);
 
+// -------- STATE --------
 let historyMode = false;
+let lastInteraction = Date.now();
 
-// -------- UPDATE --------
+// -------- TRACK USER MOVEMENT --------
+map.on("move", () => {
+  lastInteraction = Date.now();
+});
+
+// -------- UPDATE LOOP --------
 function update() {
 
   fetch("/api/data")
   .then(r => r.json())
   .then(data => {
 
+    // ---- MAP ----
     if (!historyMode && data.gps.lat) {
-      marker.setLatLng([data.gps.lat, data.gps.lon]);
-      map.setView([data.gps.lat, data.gps.lon], 15);
+
+      let lat = data.gps.lat;
+      let lon = data.gps.lon;
+
+      marker.setLatLng([lat, lon]);
+
+      if (Date.now() - lastInteraction > 15000) {
+        map.setView([lat, lon], 15);
+      }
     }
 
+    // ---- LOG TABLE ----
     let html = "";
     let lastDate = "";
 
@@ -72,18 +124,16 @@ function update() {
 
       if (l.date !== lastDate) {
         html += `<tr>
-          <td colspan="4" style="text-align:center;font-weight:bold;">
-            ${l.date}
-          </td>
+          <td colspan="3" class="date-row">${l.date}</td>
         </tr>`;
         lastDate = l.date;
       }
 
       html += `<tr>
-  <td>${l.id}</td>
-  <td>${l.user}</td>
-  <td>${l.on}</td>
-</tr>`;
+        <td>${l.id}</td>
+        <td>${l.user}</td>
+        <td>${l.on}</td>
+      </tr>`;
     });
 
     document.getElementById("log").innerHTML = html;
@@ -91,7 +141,6 @@ function update() {
 }
 
 setInterval(update, 2000);
-
 
 // -------- LOAD HISTORY --------
 fetch("/api/history")
@@ -102,7 +151,10 @@ fetch("/api/history")
 
   h.forEach((e,i) => {
     opt += `<option value="${i}">
-      ${new Date(e.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
+      ${new Date(e.time).toLocaleTimeString([], {
+        hour:'2-digit',
+        minute:'2-digit'
+      })}
     </option>`;
   });
 
@@ -124,6 +176,7 @@ function showHistory(i) {
   .then(h => {
 
     let p = h[i];
+
     marker.setLatLng([p.lat, p.lon]);
     map.setView([p.lat, p.lon], 15);
   });
