@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Smart System</title>
+<title>Vehicle System</title>
 
 <link rel="stylesheet"
 href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -9,31 +9,35 @@ href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
 body { font-family: Arial; text-align:center; }
 #map { height:300px; width:600px; margin:auto; }
-table { margin:auto; border-collapse: collapse; }
-td, th { border:1px solid black; padding:5px; }
+
+table { border-collapse: collapse; margin:auto; margin-top:20px; }
+td, th { border:1px solid black; padding:6px; }
+
+button { padding:10px 20px; margin:10px; }
 </style>
 </head>
 
 <body>
 
-<h2>Smart Dashboard</h2>
+<h2>Vehicle Dashboard</h2>
 
-<h3 id="relay">Relay: --</h3>
+<button onclick="turnOff()">TURN OFF</button>
 
-<button onclick="turnOff()">TURN OFF RELAY</button>
+<br>
 
-<p id="time">Last GPS Update: --</p>
+<select id="history" onchange="showHistory(this.value)">
+<option value="">Live</option>
+</select>
 
 <div id="map"></div>
-
-<h3>Last 20 Events</h3>
 
 <table>
 <thead>
 <tr>
-<th>Card</th>
-<th>Time</th>
-<th>Relay</th>
+<th>Sr</th>
+<th>User</th>
+<th>ON</th>
+<th>OFF</th>
 </tr>
 </thead>
 <tbody id="log"></tbody>
@@ -43,52 +47,95 @@ td, th { border:1px solid black; padding:5px; }
 
 <script>
 
-let map = L.map('map').setView([16.7, 74.2], 13);
+let map = L.map('map').setView([16.7, 74.2], 15);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
 .addTo(map);
 
 let marker = L.marker([16.7, 74.2]).addTo(map);
 
-function turnOff() {
-  fetch("/api/off", {method:"POST"});
-}
+let historyMode = false;
 
+// -------- UPDATE --------
 function update() {
 
   fetch("/api/data")
   .then(r => r.json())
   .then(data => {
 
-    document.getElementById("relay").innerText =
-      "Relay: " + data.relay;
-
-    // GPS
-    if (data.gps.lat != null) {
+    if (!historyMode && data.gps.lat) {
       marker.setLatLng([data.gps.lat, data.gps.lon]);
-      map.setView([data.gps.lat, data.gps.lon]);
-
-      document.getElementById("time").innerText =
-        "Last GPS Update: " + data.gps.time;
+      map.setView([data.gps.lat, data.gps.lon], 15);
     }
 
-    // logs
     let html = "";
+    let lastDate = "";
 
-    data.events.forEach(e => {
+    data.logs.forEach(l => {
+
+      if (l.date !== lastDate) {
+        html += `<tr>
+          <td colspan="4" style="text-align:center;font-weight:bold;">
+            ${l.date}
+          </td>
+        </tr>`;
+        lastDate = l.date;
+      }
+
       html += `<tr>
-        <td>${e.card}</td>
-        <td>${e.time}</td>
-        <td>${e.relay}</td>
+        <td>${l.id}</td>
+        <td>${l.user}</td>
+        <td>${l.on}</td>
+        <td>${l.off}</td>
       </tr>`;
     });
 
     document.getElementById("log").innerHTML = html;
-
   });
 }
 
 setInterval(update, 2000);
+
+// -------- OFF BUTTON --------
+function turnOff() {
+  fetch("/api/off", {method:"POST"});
+}
+
+// -------- LOAD HISTORY --------
+fetch("/api/history")
+.then(r => r.json())
+.then(h => {
+
+  let opt = '<option value="">Live</option>';
+
+  h.forEach((e,i) => {
+    opt += `<option value="${i}">
+      ${new Date(e.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
+    </option>`;
+  });
+
+  document.getElementById("history").innerHTML = opt;
+});
+
+// -------- SHOW HISTORY --------
+function showHistory(i) {
+
+  if (i === "") {
+    historyMode = false;
+    return;
+  }
+
+  historyMode = true;
+
+  fetch("/api/history")
+  .then(r => r.json())
+  .then(h => {
+
+    let p = h[i];
+    marker.setLatLng([p.lat, p.lon]);
+    map.setView([p.lat, p.lon], 15);
+  });
+}
 
 </script>
 
