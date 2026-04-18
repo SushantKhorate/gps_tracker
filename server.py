@@ -1,90 +1,130 @@
 from flask import Flask, request, jsonify, render_template
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 
 app = Flask(__name__)
 IST = pytz.timezone('Asia/Kolkata')
 
-events = []
+gps_data = {"lat": None, "lon": None}
+gps_history = []
+
+logs = []
+counter = 1
+
 relay_status = "OFF"
-relay_command = "NONE"
+command = "NONE"
 
-gps_data = {
-    "lat": None,
-    "lon": None,
-    "time": None
-}
-
-# -------- GPS FROM PHONE --------
+# -------- GPS --------
 @app.route('/api/gps', methods=['POST'])
 def gps():
-    global gps_data
+    global gps_data, gps_history
 
     data = request.json
-    now = datetime.now(IST).strftime("%d-%m-%Y %I:%M:%S %p")
+    now = datetime.now(IST)
 
-    gps_data = {
-        "lat": data.get("lat"),
-        "lon": data.get("lon"),
-        "time": now
-    }
+    gps_data = {"lat": data["lat"], "lon": data["lon"]}
 
-    return {"status": "ok"}
+    # store hourly
+    if not gps_history or (now - gps_history[0]["time"]).seconds > 3600:
+        gps_history.insert(0, {
+            "lat": data["lat"],
+            "lon": data["lon"],
+            "time": now
+        })
 
+    # keep only 1 day
+    gps_history[:] = [
+        x for x in gps_history
+        if now - x["time"] <= timedelta(days=1)
+    ]
 
-# -------- RFID EVENT --------
+    return {"ok": True}
+
+# -------- SINGLE EVENT (fallback) --------
 @app.route('/api/event', methods=['POST'])
 def event():
-    global relay_status
+    global counter, relay_status
 
     data = request.json
-    now = datetime.now(IST).strftime("%d-%m-%Y %I:%M:%S %p")
+    now = datetime.now(IST)
 
-    entry = {
-        "card": data.get("card"),
-        "time": now,
-        "relay": data.get("relay")
-    }
+    logs.insert(0, {
+        "id": counter,
+        "user": data["user"],
+        "on": now.strftime("%H:%M"),
+        "off": "",
+        "date": now.strftime("%d-%m-%Y")
+    })
 
-    relay_status = entry["relay"]
+    counter += 1
 
-    events.insert(0, entry)
+    if len(logs) > 30:
+        logs.pop()
 
-    if len(events) > 20:
-        events.pop()
+    relay_status = "ON"
+    return {"ok": True}
 
-    return {"status": "ok"}
+# -------- BATCH EVENTS --------
+@app.route('/api/event_batch', methods=['POST'])
+def batch():
+    global logs, counter, relay_status
 
+    data = request.json
+    now = datetime.now(IST)
 
-# -------- WEB DATA --------
+    for user in data["logs"]:
+        logs.insert(0, {
+            "id": counter,
+            "user": user,
+            "on": now.strftime("%H:%M"),
+            "off": "",
+            "date": now.strftime("%d-%m-%Y")
+        })
+        counter += 1
+
+    if len(logs) > 30:
+        logs[:] = logs[:30]
+
+    relay_status = "ON"
+    return {"ok": True}
+
+# -------- DATA --------
 @app.route('/api/data')
 def data():
-    global relay_command
+    global command
 
-    response = {
-        "relay": relay_status,
-        "events": events,
+    res = {
         "gps": gps_data,
-        "command": relay_command
+        "logs": logs,
+        "relay": relay_status,
+        "command": command
     }
 
-    relay_command = "NONE"
+    command = "NONE"
+    return jsonify(res)
 
-    return jsonify(response)
+# -------- HISTORY --------
+@app.route('/api/history')
+def history():
+    return jsonify(gps_history)
 
-
-# -------- TURN OFF RELAY --------
+# -------- OFF --------
 @app.route('/api/off', methods=['POST'])
 def off():
-    global relay_command
-    relay_command = "OFF"
-    return {"status": "ok"}
+    global command, relay_status
 
+    command = "OFF"
+    relay_status = "OFF"
+
+    now = datetime.now(IST).strftime("%H:%M")
+
+    if logs:
+        logs[0]["off"] = now
+
+    return {"ok": True}
 
 @app.route('/')
 def home():
     return render_template("index.html")
 
-
-if __name__ == "__main__":
-    app.run()
+app.run(host="0.0.0.0", port=5000)
